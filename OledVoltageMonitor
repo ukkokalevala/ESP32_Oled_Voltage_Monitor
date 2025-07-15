@@ -1,0 +1,67 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET    -1
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+// === CONFIGURE THESE ===
+const int analogPin = 1;     // ADC1_CH1 (GPIO1)
+const float R1 = 10000.0;    // 10kΩ
+const float R2 = 10000.0;    // 10kΩ
+
+void setup() {
+  Serial.begin(115200);
+  analogReadResolution(12);  // ESP32-C3: 0–4095
+
+  Wire.begin(7, 6); // SDA = GPIO7, SCL = GPIO6
+
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 OLED failed!"));
+    while (true);
+  }
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println(F("USB Voltage Monitor"));
+  display.display();
+  delay(1000);
+}
+
+void loop() {
+  int adcVal = analogRead(analogPin);
+  float v = adcVal * (3.3 / 4095.0);            // ADC voltage
+  float inputVoltage = v * ((R1 + R2) / R2);    // Undo divider
+
+  // Show on Serial
+  Serial.print("ADC: ");
+  Serial.print(adcVal);
+  Serial.print(" | Voltage: ");
+  Serial.print(inputVoltage, 2);
+  Serial.println(" V");
+
+  // Show on OLED
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.setTextSize(1);
+  display.println("USB Voltage Monitor");
+
+  display.setTextSize(2);
+  display.setCursor(0, 20);
+  display.print(inputVoltage, 2);
+  display.println(" V");
+
+  if (inputVoltage < 4.75) {
+    display.setTextSize(1);
+    display.setCursor(0, 50);
+    display.println("Warning: LOW VOLTAGE!");
+  }
+
+  display.display();
+  delay(1000);
+}
